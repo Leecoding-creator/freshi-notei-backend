@@ -1,0 +1,55 @@
+# Java / Maven
+target/
+build/
+out/
+*.class
+*.jar
+*.war
+*.ear
+hs_err_pid*
+
+# IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Eclipse / VS Code
+.classpath
+.project
+.settings/
+.vscode/
+bin/
+
+# Spring Boot - local secret configs
+HELP.md
+application-local.yml
+application-dev.yml
+application-prod.yml
+application-secret.yml
+
+# Secrets - 환경변수 / 비밀키
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Claude Code local settings
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+spring.log*
+
+# 기타
+*.bak
+*.tmp
+*.swp
+*~

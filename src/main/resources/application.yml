@@ -1,0 +1,16 @@
+server:
+  port: ${PORT:8080}     # Railway 등 PaaS 가 주입하는 PORT 환경변수 우선, 로컬은 8080
+
+spring:
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+gemini:
+  api-key: ${GEMINI_API_KEY:}        # 환경변수로 주입
+  model: gemini-2.5-flash             # vision 가능 모델, 필요 시 교체
+
+logging:
+  level:
+    com.freshinoti: DEBUG
