@@ -1,6 +1,6 @@
 server:
-  port: ${PORT:8080}     # Railway 등 PaaS 가 주입하는 PORT 환경변수 우선, 로컬은 8080
-
+  port: ${PORT:8080}
+  forward-headers-strategy: framework
 spring:
   servlet:
     multipart:
