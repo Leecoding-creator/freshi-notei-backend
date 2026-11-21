@@ -1,5 +1,6 @@
 package com.freshinotei.service;
 
+import com.freshinotei.config.AppTime;
 import com.freshinotei.domain.Ingredient;
 import com.freshinotei.dto.PriorityIngredient;
 import org.springframework.stereotype.Component;
@@ -20,7 +21,7 @@ import java.time.temporal.ChronoUnit;
 public class PriorityCalculator {
 
     public PriorityIngredient calculate(Ingredient ingredient) {
-        long daysLeft = ChronoUnit.DAYS.between(LocalDate.now(), ingredient.expirationDate());
+        long daysLeft = ChronoUnit.DAYS.between(LocalDate.now(AppTime.ZONE), ingredient.expirationDate());
         double riskWeight = riskWeightOf(ingredient.category());
 
         double base;

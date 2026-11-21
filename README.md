@@ -4,14 +4,15 @@
 
 ## 스택
 - Java 17 / Spring Boot 3.3
-- Google Gemini Vision API (`gemini-2.5-flash`)
+- Google Gemini API (`gemini-3.1-flash-lite`, 환경변수 `GEMINI_MODEL` 로 교체 가능)
 - 인메모리 저장소 (DB 미연결, 추후 PostgreSQL + JPA 전환 예정)
 
 ## 실행
 
 ```bash
 export GEMINI_API_KEY=your_key_here
-./mvnw spring-boot:run
+# 선택: export GEMINI_MODEL=gemini-3.1-pro-preview
+mvn spring-boot:run
 ```
 
 ## API
@@ -50,6 +51,20 @@ curl http://localhost:8080/ingredients/priority | jq
     "urgency": "SOON"
   }
 ]
+```
+
+## 에러 응답
+
+Spring Boot 기본 포맷 + `message` 필드.
+
+| 상황 | Status |
+|---|---|
+| `image` 누락 / 빈 파일 | 400 |
+| 10MB 초과 | 413 |
+| Gemini 호출·파싱 실패 | 502 |
+
+```json
+{ "timestamp": "...", "status": 502, "error": "Bad Gateway", "message": "영수증 분석에 실패했습니다.", "path": "/ingredients/scan" }
 ```
 
 ## 추후 확장
