@@ -9,8 +9,8 @@ spring:
 
 gemini:
   api-key: ${GEMINI_API_KEY:}        # 환경변수로 주입
-  model: gemini-2.5-flash             # vision 가능 모델, 필요 시 교체
+  model: ${GEMINI_MODEL:gemini-3.1-flash-lite}   # 환경변수로 교체 가능 (예: gemini-3.1-pro-preview)
 
 logging:
   level:
-    com.freshinoti: DEBUG
+    com.freshinotei: DEBUG

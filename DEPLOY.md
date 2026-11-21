@@ -72,6 +72,7 @@ git push -u origin main
 |---|---|
 | `GEMINI_API_KEY` | 발급받으신 Gemini API 키 |
 | `JAVA_TOOL_OPTIONS` | `-Xmx512m` |
+| `GEMINI_MODEL` (선택) | 기본값 `gemini-3.1-flash-lite` |
 
 > 💡 `JAVA_TOOL_OPTIONS` 는 무료 플랜의 메모리 한계(512MB) 초과 방지용
 
@@ -124,6 +125,6 @@ https://여러분의-도메인.up.railway.app/swagger-ui/index.html
 
 Railway 가 어려우면 https://render.com 도 동일한 방식으로 가능합니다.
 - **New → Web Service** → GitHub 저장소 연결
-- **Build Command**: `./mvnw clean package -DskipTests`
+- **Build Command**: `mvn clean package -DskipTests`
 - **Start Command**: `java -jar target/freshi-notei-backend-0.1.0.jar`
 - 환경변수에 `GEMINI_API_KEY` 추가
