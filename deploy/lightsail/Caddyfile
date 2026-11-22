@@ -1,0 +1,9 @@
+# setup.sh 가 __DOMAIN__ 을 실제 도메인으로 바꿔 /etc/caddy/Caddyfile 로 복사합니다.
+# Caddy 가 Let's Encrypt 인증서를 자동 발급·갱신합니다.
+__DOMAIN__ {
+	encode gzip
+	request_body {
+		max_size 11MB
+	}
+	reverse_proxy 127.0.0.1:8080
+}
