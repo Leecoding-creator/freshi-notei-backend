@@ -1,6 +1,6 @@
 package com.freshinotei.controller;
 
-import com.freshinotei.service.GeminiVisionService.GeminiException;
+import com.freshinotei.service.GeminiException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

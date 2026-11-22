@@ -6,10 +6,7 @@ import com.freshinotei.config.AppTime;
 import com.freshinotei.domain.Ingredient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClient;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -18,21 +15,14 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Gemini Vision API 로 영수증 이미지에서 식재료를 추출.
+ * Gemini 로 영수증 이미지에서 식재료를 추출.
  *
- * 흐름:
- *   1) 이미지 → Base64
- *   2) 프롬프트 + inline_data 로 요청 본문 구성
- *   3) responseMimeType=application/json 으로 강제 → 깔끔한 JSON 회수
- *   4) candidates[0].content.parts[0].text 를 다시 파싱하여 도메인 객체로 변환
+ * 흐름: 이미지 → Base64 → 프롬프트 + inline_data → JSON 응답 → 도메인 객체
  */
 @Service
 public class GeminiVisionService {
 
     private static final Logger log = LoggerFactory.getLogger(GeminiVisionService.class);
-
-    private static final String GEMINI_URL =
-            "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent";
 
     /**
      * 영수증 → 식재료 추출 프롬프트.
@@ -77,111 +67,31 @@ public class GeminiVisionService {
             }
             """;
 
-    private final RestClient geminiRestClient;
+    private final GeminiClient geminiClient;
     private final ObjectMapper objectMapper;
-    private final String apiKey;
-    private final String model;
 
-    public GeminiVisionService(
-            RestClient geminiRestClient,
-            ObjectMapper objectMapper,
-            @Value("${gemini.api-key}") String apiKey,
-            @Value("${gemini.model:gemini-3.1-flash-lite}") String model
-    ) {
-        this.geminiRestClient = geminiRestClient;
+    public GeminiVisionService(GeminiClient geminiClient, ObjectMapper objectMapper) {
+        this.geminiClient = geminiClient;
         this.objectMapper = objectMapper;
-        this.apiKey = apiKey;
-        this.model = model;
     }
 
     public List<Ingredient> extractFromReceipt(byte[] imageBytes, String mimeType) {
-        if (apiKey == null || apiKey.isBlank()) {
-            throw new IllegalStateException(
-                    "GEMINI_API_KEY 환경변수가 설정되지 않았습니다.");
-        }
-
         String base64 = Base64.getEncoder().encodeToString(imageBytes);
         String resolvedMime = (mimeType == null || mimeType.isBlank()) ? "image/jpeg" : mimeType;
         String prompt = EXTRACTION_PROMPT.formatted(LocalDate.now(AppTime.ZONE));
 
-        Map<String, Object> requestBody = Map.of(
-                "contents", List.of(Map.of(
-                        "parts", List.of(
-                                Map.of("text", prompt),
-                                Map.of("inline_data", Map.of(
-                                        "mime_type", resolvedMime,
-                                        "data", base64
-                                ))
-                        )
-                )),
-                // Gemini 3 계열은 temperature 기본값(1.0) 유지를 권장 → 지정하지 않음
-                "generationConfig", Map.of(
-                        "response_mime_type", "application/json"
-                )
-        );
-
-        // API 키는 URL 쿼리 대신 헤더로 전송 (예외 메시지·로그에 키가 남지 않도록)
-        String url = String.format(GEMINI_URL, model);
+        String rawJson = geminiClient.generateJson(List.of(
+                Map.of("text", prompt),
+                Map.of("inline_data", Map.of(
+                        "mime_type", resolvedMime,
+                        "data", base64
+                ))
+        ), "영수증 분석");
 
         try {
-            JsonNode response = geminiRestClient.post()
-                    .uri(url)
-                    .header("x-goog-api-key", apiKey)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(requestBody)
-                    .retrieve()
-                    .body(JsonNode.class);
-
-            String rawJson = extractText(response);
-
-            log.info("[Gemini 응답 원본]\n{}", rawJson);
-
             return parseIngredients(rawJson);
-
         } catch (Exception e) {
-            log.error("Gemini API 호출 실패 (model={})", model, e);
             throw new GeminiException("영수증 분석에 실패했습니다.", e);
-        }
-    }
-
-    /**
-     * candidates[0].content.parts 중 thought 가 아닌 text 파트를 이어붙인다.
-     * (Gemini 3 계열은 parts[0] 이 항상 본문이라는 보장이 없음)
-     */
-    private String extractText(JsonNode response) {
-        if (response == null) {
-            throw new IllegalStateException("Gemini 응답이 비어 있습니다.");
-        }
-        JsonNode parts = response.path("candidates").path(0).path("content").path("parts");
-        StringBuilder sb = new StringBuilder();
-        for (JsonNode part : parts) {
-            if (part.path("thought").asBoolean(false)) continue;
-            if (part.has("text")) sb.append(part.get("text").asText());
-        }
-        if (sb.isEmpty()) {
-            throw new IllegalStateException("Gemini 응답에 텍스트가 없습니다: "
-                    + response.path("promptFeedback") + " / finishReason="
-                    + response.path("candidates").path(0).path("finishReason").asText("?"));
-        }
-        return stripCodeFence(sb.toString().trim());
-    }
-
-    /** 모델이 ```json ... ``` 으로 감싸 보내는 경우 대비 */
-    private static String stripCodeFence(String text) {
-        if (text.startsWith("```")) {
-            int firstNewline = text.indexOf('\n');
-            int lastFence = text.lastIndexOf("```");
-            if (firstNewline > 0 && lastFence > firstNewline) {
-                return text.substring(firstNewline + 1, lastFence).trim();
-            }
-        }
-        return text;
-    }
-
-    /** Gemini 호출/파싱 실패 → 502 로 매핑 */
-    public static class GeminiException extends RuntimeException {
-        public GeminiException(String message, Throwable cause) {
-            super(message, cause);
         }
     }
 
