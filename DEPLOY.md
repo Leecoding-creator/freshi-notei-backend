@@ -39,8 +39,15 @@ sudo bash /opt/freshinotei/deploy/lightsail/deploy.sh
 `https://freshinotei.duckdns.org/ingredients` 에서 `[]` 가 보이면 성공.
 Swagger: `https://freshinotei.duckdns.org/swagger-ui/index.html`
 
-### 5. 코드 업데이트
-main 에 머지한 뒤 서버에서:
+### 5. 코드 업데이트 (자동 배포)
+main 에 머지하면 GitHub Actions(`.github/workflows/deploy.yml`)가 서버에 SSH 로 접속해 `deploy.sh` 를 실행합니다.
+`.md` 문서만 바뀐 경우는 배포하지 않습니다. Actions 탭 → **Deploy to Lightsail → Run workflow** 로 수동 실행도 가능.
+
+최초 1회 설정: GitHub 저장소 **Settings → Secrets and variables → Actions → New repository secret**
+- Name: `LIGHTSAIL_SSH_KEY`
+- Value: Lightsail 기본 SSH 키(`LightsailDefaultKey-ap-northeast-2.pem`) 파일 내용 전체 (`-----BEGIN` ~ `END-----` 포함)
+
+수동 배포가 필요하면 서버에서:
 ```bash
 sudo bash /opt/freshinotei/deploy/lightsail/deploy.sh
 ```
