@@ -3,6 +3,7 @@ package com.freshinotei.controller;
 import com.freshinotei.domain.Ingredient;
 import com.freshinotei.dto.PriorityIngredient;
 import com.freshinotei.dto.ScanResponse;
+import com.freshinotei.dto.ScannedIngredient;
 import com.freshinotei.repository.IngredientStore;
 import com.freshinotei.service.GeminiVisionService;
 import com.freshinotei.service.PriorityCalculator;
@@ -10,9 +11,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -45,7 +49,7 @@ public class IngredientController {
      *   curl -X POST http://localhost:8080/ingredients/scan \
      *        -F "image=@receipt.jpg"
      */
-    @Operation(summary = "영수증 이미지 스캔", description = "영수증 이미지를 업로드하면 Gemini로 식재료를 추출하여 저장합니다.")
+    @Operation(summary = "영수증 이미지 스캔", description = "영수증 이미지를 업로드하면 Gemini로 식재료를 추출하여 저장합니다. 각 항목에 daysLeft/priorityScore/urgency 포함.")
     @PostMapping(value = "/scan", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ScanResponse scan(
             @Parameter(
@@ -70,7 +74,11 @@ public class IngredientController {
         log.info("추출 완료: {}건", ingredients.size());
         ingredients.forEach(i -> log.debug("  └ {}", i));
 
-        return new ScanResponse(ingredients.size(), ingredients);
+        List<ScannedIngredient> result = ingredients.stream()
+                .map(priorityCalculator::calculate)
+                .map(ScannedIngredient::of)
+                .toList();
+        return new ScanResponse(result.size(), result);
     }
 
     /**
@@ -90,6 +98,21 @@ public class IngredientController {
     @GetMapping
     public List<Ingredient> all() {
         return store.findAll();
+    }
+
+    /**
+     * 식재료 1개 삭제 (먹었음 / 버림).
+     */
+    @Operation(summary = "식재료 개별 삭제", description = "id 는 /ingredients/priority 응답의 ingredient.id. 성공 204, 없는 id 면 404.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "삭제됨"),
+            @ApiResponse(responseCode = "404", description = "해당 id 없음")
+    })
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable String id) {
+        return store.remove(id)
+                ? ResponseEntity.noContent().build()
+                : ResponseEntity.notFound().build();
     }
 
     /**

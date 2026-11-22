@@ -1,21 +1,21 @@
 # FreshiNotei Backend API 명세서
 
 > 프론트엔드(React/Next.js) 연동용 문서
-> 최종 업데이트: 2026-05-12
+> 최종 업데이트: 2026-11-22
 
 ## Base URL
 
 | 환경 | URL |
 |---|---|
 | 로컬 개발 | `http://localhost:8080` |
-| 배포 | (배포 완료 후 추가 예정) |
+| 배포 | `https://freshinotei.duckdns.org` |
 
 ## Swagger UI
 
 브라우저에서 다음 주소로 접속하면 API 를 직접 테스트할 수 있습니다.
 
 ```
-http://localhost:8080/swagger-ui/index.html
+https://freshinotei.duckdns.org/swagger-ui/index.html
 ```
 
 ---
@@ -59,14 +59,10 @@ const data = await response.json();
       "name": "깻잎",
       "purchaseDate": "2026-05-12",
       "expirationDate": "2026-05-17",
-      "category": "채소"
-    },
-    {
-      "id": "fb67ba56-d532-407b-bdd8-dd532a851532",
-      "name": "토마토",
-      "purchaseDate": "2026-05-12",
-      "expirationDate": "2026-05-19",
-      "category": "과일"
+      "category": "채소",
+      "daysLeft": 5,
+      "priorityScore": 36.0,
+      "urgency": "WATCH"
     }
   ]
 }
@@ -82,6 +78,9 @@ const data = await response.json();
 | `ingredients[].purchaseDate` | string (YYYY-MM-DD) | 구매일 |
 | `ingredients[].expirationDate` | string (YYYY-MM-DD) | 유통기한 |
 | `ingredients[].category` | string | 카테고리 (채소/과일/육류/수산물/유제품/곡류/기타) |
+| `ingredients[].daysLeft` | int | 유통기한까지 남은 일수 (2번 우선순위 조회와 같은 계산) |
+| `ingredients[].priorityScore` | double | 우선순위 점수 (0~100) |
+| `ingredients[].urgency` | string | EXPIRED / TODAY / URGENT / SOON / WATCH / FRESH |
 
 ---
 
@@ -181,6 +180,73 @@ const priorityList = await response.json();
 
 ---
 
+## 5. 식재료 개별 삭제
+
+먹었거나 버린 재료 1개를 삭제합니다.
+
+| 항목 | 값 |
+|---|---|
+| Method | `DELETE` |
+| Path | `/ingredients/{id}` |
+| id | `/ingredients/priority` 응답의 `ingredient.id` |
+| 응답 | 성공 `204` (본문 없음), 없는 id 면 `404` |
+
+```javascript
+await fetch(`${BASE_URL}/ingredients/${id}`, { method: 'DELETE' });
+// 이후 /ingredients/priority 다시 조회해서 화면 갱신
+```
+
+---
+
+## 6. 레시피 추천
+
+유통기한이 임박한 재료를 우선 활용하는 레시피 3개를 AI 가 추천합니다.
+
+| 항목 | 값 |
+|---|---|
+| Method | `POST` |
+| Path | `/recipes/recommend` |
+| 요청 본문 | 없음 |
+| 응답 시간 | 수 초~10초 (Gemini 호출) → 로딩 화면 필요 |
+
+- 우선순위 상위 8개 재료를 사용하며, 이미 만료된(EXPIRED) 재료는 제외합니다.
+- 냉장고가 비어 있으면 `recipes` 가 빈 배열입니다.
+
+```javascript
+const res = await fetch(`${BASE_URL}/recipes/recommend`, { method: 'POST' });
+const { recipes } = await res.json();
+```
+
+### 응답 예시
+
+```json
+{
+  "recipes": [
+    {
+      "title": "삼겹살 김치볶음",
+      "reason": "삼겹살 D-1, 양파 D-3",
+      "cookTimeMinutes": 15,
+      "usedIngredients": ["삼겹살", "양파"],
+      "extraIngredients": ["김치", "간장"],
+      "steps": ["삼겹살을 굽는다", "양파와 김치를 넣고 볶는다", "간장으로 간을 맞춘다"]
+    }
+  ]
+}
+```
+
+### 응답 필드
+
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| `title` | string | 요리 이름 |
+| `reason` | string | 추천 이유 (소진하는 임박 재료) |
+| `cookTimeMinutes` | int | 예상 조리 시간(분) |
+| `usedIngredients` | string[] | 냉장고에 있는 재료 중 사용하는 것 |
+| `extraIngredients` | string[] | 추가로 필요한 재료 (양념 등) |
+| `steps` | string[] | 조리 순서 |
+
+---
+
 ## CORS
 
 전체 도메인 허용. 프론트엔드는 별도 설정 없이 호출 가능합니다.
@@ -189,11 +255,14 @@ const priorityList = await response.json();
 
 | HTTP 상태 | 의미 |
 |---|---|
-| 200 | 성공 |
-| 400 | 잘못된 요청 (이미지 누락 등) |
-| 500 | 서버 에러 (Gemini API 호출 실패 등) |
+| 200 / 204 | 성공 |
+| 400 | 잘못된 요청 (이미지 누락·빈 파일) |
+| 404 | 없는 식재료 id (개별 삭제) |
+| 413 | 이미지 10MB 초과 |
+| 502 | AI(Gemini) 호출·분석 실패 |
 
-에러 응답 본문에는 메시지가 포함됩니다. 프론트에서 try-catch 로 감싸서 사용자에게 에러 메시지를 표시하면 됩니다.
+에러 응답 형식: `{ "timestamp", "status", "error", "message", "path" }`
+사용자 안내 문구는 `message` 를 쓰면 됩니다.
 
 ---
 

@@ -23,6 +23,8 @@ mvn spring-boot:run
 | GET    | `/ingredients/priority` | 소비 우선순위 내림차순 리스트       |
 | GET    | `/ingredients`        | 보유 식재료 전체                   |
 | DELETE | `/ingredients`        | 데모 리셋                          |
+| DELETE | `/ingredients/{id}`   | 식재료 개별 삭제 (204 / 404)       |
+| POST   | `/recipes/recommend`  | 임박 재료 우선 레시피 3개 추천     |
 
 ## 데모 시나리오
 
@@ -69,6 +71,5 @@ Spring Boot 기본 포맷 + `message` 필드.
 
 ## 추후 확장
 - PostgreSQL + JPA 전환 (`IngredientStore` → `JpaRepository`)
-- `/recipes/recommend` 엔드포인트 (보유 식재료 기반 Gemini 레시피 추천)
 - 사용자/알림 도메인 추가
 - 인증 (JWT)

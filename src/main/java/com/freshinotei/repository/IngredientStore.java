@@ -29,6 +29,11 @@ public class IngredientStore {
         return new ArrayList<>(store.values());
     }
 
+    /** @return 삭제됐으면 true, 없는 id 면 false */
+    public boolean remove(String id) {
+        return store.remove(id) != null;
+    }
+
     public void clear() {
         store.clear();
     }
