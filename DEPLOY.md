@@ -1,4 +1,65 @@
-# Railway 배포 가이드
+# 배포 가이드
+
+현재 배포: **AWS Lightsail (Ubuntu, 2GB) + Caddy(HTTPS) + DuckDNS 무료 도메인**
+(Railway 무료 기간 종료로 이전. 예전 Railway 가이드는 문서 아래쪽에 남겨둠)
+
+## Lightsail 배포
+
+### 0. 준비물
+- Lightsail Ubuntu 22.04/24.04 인스턴스
+- Gemini API 키
+
+### 1. 고정 IP 연결
+Lightsail 콘솔 → **Networking → Create static IP** → 인스턴스에 연결.
+(고정 IP 없으면 재시작할 때 IP 가 바뀌어 도메인이 끊김)
+
+### 2. 방화벽
+인스턴스 → **Networking → IPv4 Firewall** 에서 아래만 열어둠.
+
+| 포트 | 용도 |
+|---|---|
+| 22 | SSH |
+| 80 | HTTPS 인증서 발급·리다이렉트 |
+| 443 | HTTPS |
+
+8080 은 열지 않음 (Spring 은 localhost 에만 바인딩, Caddy 가 앞에서 받음).
+
+### 3. DuckDNS 도메인
+1. https://www.duckdns.org 로그인 → 서브도메인 생성 (예: `freshinotei`)
+2. **current ip** 에 1번 고정 IP 입력 → update ip
+
+### 4. 서버 설정 (최초 1회)
+```bash
+git clone https://github.com/Leecoding-creator/freshi-notei-backend.git ~/freshi-setup
+sudo bash ~/freshi-setup/deploy/lightsail/setup.sh freshinotei.duckdns.org
+sudo nano /etc/freshinotei.env        # GEMINI_API_KEY 입력
+sudo bash /opt/freshinotei/deploy/lightsail/deploy.sh
+```
+
+`https://freshinotei.duckdns.org/ingredients` 에서 `[]` 가 보이면 성공.
+Swagger: `https://freshinotei.duckdns.org/swagger-ui/index.html`
+
+### 5. 코드 업데이트
+main 에 머지한 뒤 서버에서:
+```bash
+sudo bash /opt/freshinotei/deploy/lightsail/deploy.sh
+```
+
+### 자주 쓰는 명령
+```bash
+journalctl -u freshinotei -f             # 백엔드 로그
+sudo systemctl restart freshinotei       # 재시작 (환경변수 바꾼 뒤)
+journalctl -u caddy -n 50 --no-pager     # HTTPS 인증서 문제 확인
+```
+
+### 트러블슈팅
+- **HTTPS 접속 안 됨**: 방화벽 80/443, DuckDNS IP 가 고정 IP 와 같은지, `journalctl -u caddy` 확인
+- **502 Bad Gateway**: 백엔드가 안 떠 있음 → `journalctl -u freshinotei -n 100`
+- **스캔만 실패(502 + "영수증 분석에 실패했습니다")**: `/etc/freshinotei.env` 의 API 키·모델명 확인
+
+---
+
+# (이전) Railway 배포 가이드
 
 가장 쉽고 무료인 Railway 로 배포합니다.
 
