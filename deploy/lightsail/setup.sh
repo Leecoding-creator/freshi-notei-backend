@@ -64,6 +64,9 @@ if [[ ! -d "$APP_DIR/.git" ]]; then
   git clone "$REPO_URL" "$APP_DIR"
 fi
 chown -R "$APP_USER":"$APP_USER" "$APP_DIR"
+# root 로 git 을 실행해도 "dubious ownership" 오류가 나지 않도록 예외 등록
+git config --system --get-all safe.directory 2>/dev/null | grep -qx "$APP_DIR" \
+  || git config --system --add safe.directory "$APP_DIR"
 
 echo "==> [5/6] 환경변수 파일"
 if [[ ! -f "$ENV_FILE" ]]; then

@@ -35,7 +35,7 @@ systemctl restart freshinotei
 echo "==> 기동 대기"
 for i in $(seq 1 60); do
   if curl -fs http://127.0.0.1:8080/ingredients >/dev/null; then
-    echo "OK — $(git -C "$APP_DIR" log -1 --format='%h %s')"
+    echo "OK — $(sudo -u "$APP_USER" git -C "$APP_DIR" log -1 --format='%h %s')"
     exit 0
   fi
   sleep 2
