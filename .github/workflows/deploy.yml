@@ -1,0 +1,30 @@
+# main 에 머지(push)되면 Lightsail 서버에 SSH 로 접속해 deploy.sh 실행
+#
+# 필요한 GitHub Secrets (Settings → Secrets and variables → Actions):
+#   LIGHTSAIL_SSH_KEY : Lightsail 기본 SSH 키(.pem) 파일 내용 전체
+name: Deploy to Lightsail
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-lightsail
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: SSH → deploy.sh
+        uses: appleboy/ssh-action@v1
+        with:
+          host: freshinotei.duckdns.org
+          username: ubuntu
+          key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+          command_timeout: 12m
+          script: sudo bash /opt/freshinotei/deploy/lightsail/deploy.sh
