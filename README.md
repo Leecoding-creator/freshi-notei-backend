@@ -10,10 +10,12 @@
 ## 실행
 
 ```bash
-export GEMINI_API_KEY=your_key_here
-# 선택: export GEMINI_MODEL=gemini-3.1-pro-preview
+cp .env.example .env          # .env 에 GEMINI_API_KEY 입력 (.env 는 커밋되지 않음)
+set -a; source .env; set +a
 mvn spring-boot:run
 ```
+
+환경변수 목록은 `.env.example` 참고. 서버(Lightsail)용 템플릿은 `deploy/lightsail/freshinotei.env.example`.
 
 ## API
 
