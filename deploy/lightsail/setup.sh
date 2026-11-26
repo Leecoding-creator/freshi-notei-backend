@@ -69,17 +69,17 @@ git config --system --get-all safe.directory 2>/dev/null | grep -qx "$APP_DIR" \
   || git config --system --add safe.directory "$APP_DIR"
 
 echo "==> [5/6] 환경변수 파일"
-if [[ ! -f "$ENV_FILE" ]]; then
-  cat > "$ENV_FILE" <<'EOF'
-# FreshiNotei 백엔드 환경변수 — 수정 후: sudo systemctl restart freshinotei
-GEMINI_API_KEY=여기에_API_키_입력
-# GEMINI_MODEL=gemini-3.1-flash-lite
-# 외부에서 8080 으로 직접 접근하지 못하게 localhost 에만 바인딩 (Caddy 가 앞단에서 받음)
-SERVER_ADDRESS=127.0.0.1
-SERVER_PORT=8080
-JAVA_OPTS=-Xms256m -Xmx1g
-EOF
+# 파일이 없거나, 비어 있거나(예: 설치 실패 중 nano 로 빈 파일 저장), GEMINI_API_KEY 항목이 없으면 템플릿으로 생성.
+# 이미 키가 들어 있는 파일은 건드리지 않음.
+if [[ ! -s "$ENV_FILE" ]] || ! grep -q '^GEMINI_API_KEY=' "$ENV_FILE"; then
+  if [[ -f "$ENV_FILE" ]]; then
+    cp "$ENV_FILE" "$ENV_FILE.bak.$(date +%s)"
+  fi
+  install -m 600 -o root -g root "$SCRIPT_DIR/freshinotei.env.example" "$ENV_FILE"
+  echo "    $ENV_FILE 생성 (템플릿)"
+else
   chmod 600 "$ENV_FILE"
+  echo "    $ENV_FILE 이미 있음 — 유지"
 fi
 
 echo "==> [6/6] systemd 서비스 + Caddy 설정"

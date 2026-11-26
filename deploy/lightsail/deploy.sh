@@ -14,8 +14,11 @@ if [[ $EUID -ne 0 ]]; then
   exit 1
 fi
 
-if grep -q '여기에_API_키_입력' /etc/freshinotei.env; then
-  echo "/etc/freshinotei.env 에 GEMINI_API_KEY 를 먼저 입력해 주세요." >&2
+if [[ ! -s /etc/freshinotei.env ]] \
+   || grep -q '여기에_API_키_입력' /etc/freshinotei.env \
+   || ! grep -qE '^GEMINI_API_KEY=.+' /etc/freshinotei.env; then
+  echo "/etc/freshinotei.env 에 GEMINI_API_KEY 를 먼저 입력해 주세요. (sudo nano /etc/freshinotei.env)" >&2
+  echo "파일이 없거나 비어 있으면 setup.sh 를 다시 실행하세요." >&2
   exit 1
 fi
 
